@@ -11,10 +11,9 @@ export default class ColorSchemePlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		this.app.workspace.onLayoutReady(() => {
-			this.setupRibbonMenuIcon();
-			this.watchColorSchemeChange();
-		});
+		this.setupRibbonMenuIcon();
+		this.updateTheme();
+		this.watchColorSchemeChange();
 
 		this.addSettingTab(new SettingTab(this.app, this));
 	}
