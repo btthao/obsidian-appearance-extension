@@ -1,5 +1,6 @@
 import { Plugin, setIcon } from "obsidian";
-import { ColorSchemeSettings, DEFAULT_SETTINGS } from "./settings";
+import SettingTab from "./settingTab";
+import { ColorSchemeSettings } from "./types";
 
 export default class ColorSchemePlugin extends Plugin {
 	settings: ColorSchemeSettings;
@@ -12,9 +13,10 @@ export default class ColorSchemePlugin extends Plugin {
 
 		this.app.workspace.onLayoutReady(() => {
 			this.setupRibbonMenuIcon();
+			this.watchColorSchemeChange();
 		});
 
-		this.watchColorSchemeChange();
+		this.addSettingTab(new SettingTab(this.app, this));
 	}
 
 	onunload() {
@@ -45,7 +47,7 @@ export default class ColorSchemePlugin extends Plugin {
 		this.app.vault.setConfig("theme", newScheme);
 	}
 
-	private getIconName(): string {
+	getIconName(): string {
 		const scheme = this.getCurrentColorScheme();
 
 		switch (scheme) {
@@ -58,7 +60,22 @@ export default class ColorSchemePlugin extends Plugin {
 		}
 	}
 
-	private getCurrentColorScheme(): (typeof this.colorSchemes)[number] {
+	updateTheme() {
+		const scheme = this.getCurrentColorScheme();
+
+		if (
+			scheme == "moonstone" ||
+			(scheme == "system" && document.querySelector("body.theme-light"))
+		) {
+			// @ts-ignore
+			this.app.customCss.setTheme(this.settings.lightTheme);
+		} else {
+			// @ts-ignore
+			this.app.customCss.setTheme(this.settings.darkTheme);
+		}
+	}
+
+	getCurrentColorScheme(): (typeof this.colorSchemes)[number] {
 		// @ts-ignore
 		return this.app.vault.getConfig("theme");
 	}
@@ -73,9 +90,8 @@ export default class ColorSchemePlugin extends Plugin {
 		const config = { attributes: true, childList: false, subtree: false };
 
 		const callback: MutationCallback = () => {
-			if (this.ribbonIcon) {
-				setIcon(this.ribbonIcon, this.getIconName());
-			}
+			setIcon(this.ribbonIcon, this.getIconName());
+			this.updateTheme();
 		};
 
 		this.appContainerObserver = new MutationObserver(callback);
@@ -84,11 +100,20 @@ export default class ColorSchemePlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData()
-		);
+		let storedSettings: ColorSchemeSettings = await this.loadData();
+
+		if (!storedSettings) {
+			// @ts-ignore
+			const currentTheme = this.app.customCss.theme || "Default";
+
+			storedSettings = {
+				lightTheme: currentTheme,
+				darkTheme: currentTheme,
+			};
+		}
+
+		this.settings = Object.assign({}, storedSettings);
+		this.saveSettings();
 	}
 
 	async saveSettings() {
