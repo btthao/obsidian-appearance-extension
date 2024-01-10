@@ -1,7 +1,9 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { PluginSettingTab, Setting } from "obsidian";
 import ColorSchemePlugin from "./main";
+import { App } from "./types";
 
 export default class SettingTab extends PluginSettingTab {
+	app: App;
 	plugin: ColorSchemePlugin;
 	availableThemes: Record<string, string> = {};
 
@@ -44,8 +46,8 @@ export default class SettingTab extends PluginSettingTab {
 	private validateCurrentSettings() {
 		console.log("validate settings");
 
-		// @ts-ignore
 		const currentTheme = this.app.customCss.theme || "Default";
+
 		// check if the user's preferred themes are still installed
 		const set = new Set(Object.keys(this.availableThemes));
 
@@ -61,7 +63,6 @@ export default class SettingTab extends PluginSettingTab {
 	}
 
 	private getAvailableThemes() {
-		// @ts-ignore
 		this.availableThemes = Object.keys(this.app.customCss.themes).reduce(
 			(prev, curr) => ({ ...prev, [curr]: curr }),
 			{ Default: "Default" }

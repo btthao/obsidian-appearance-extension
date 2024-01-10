@@ -1,19 +1,23 @@
 import { Plugin, setIcon } from "obsidian";
 import SettingTab from "./settingTab";
-import { ColorSchemeSettings } from "./types";
+import { App, ColorSchemeSettings } from "./types";
 
 export default class ColorSchemePlugin extends Plugin {
 	settings: ColorSchemeSettings;
 	ribbonIcon: HTMLElement;
 	colorSchemes = <const>["moonstone", "obsidian", "system"];
 	appContainerObserver: MutationObserver;
+	app: App;
 
 	async onload() {
 		await this.loadSettings();
 
-		this.setupRibbonMenuIcon();
 		this.updateTheme();
 		this.watchColorSchemeChange();
+
+		this.app.workspace.onLayoutReady(() => {
+			this.setupRibbonMenuIcon();
+		});
 
 		this.addSettingTab(new SettingTab(this.app, this));
 	}
@@ -22,7 +26,7 @@ export default class ColorSchemePlugin extends Plugin {
 		this.appContainerObserver.disconnect();
 	}
 
-	async setupRibbonMenuIcon() {
+	setupRibbonMenuIcon() {
 		this.ribbonIcon = this.addRibbonIcon(
 			this.getIconName(),
 			"Toggle color scheme",
@@ -39,10 +43,8 @@ export default class ColorSchemePlugin extends Plugin {
 					this.colorSchemes.length
 			];
 
-		// @ts-ignore
 		this.app.changeTheme(newScheme);
 
-		// @ts-ignore
 		this.app.vault.setConfig("theme", newScheme);
 	}
 
@@ -66,43 +68,38 @@ export default class ColorSchemePlugin extends Plugin {
 			scheme == "moonstone" ||
 			(scheme == "system" && document.querySelector("body.theme-light"))
 		) {
-			// @ts-ignore
 			this.app.customCss.setTheme(this.settings.lightTheme);
 		} else {
-			// @ts-ignore
 			this.app.customCss.setTheme(this.settings.darkTheme);
 		}
 	}
 
 	getCurrentColorScheme(): (typeof this.colorSchemes)[number] {
-		// @ts-ignore
 		return this.app.vault.getConfig("theme");
 	}
 
 	watchColorSchemeChange() {
 		// when user changes color scheme => classlist of container changes
 		// observe this change to update ribbon icon when user changes color scheme in both settings modal and ribbon menu
-		const container = document.querySelector(".app-container");
-
-		if (!container) return;
 
 		const config = { attributes: true, childList: false, subtree: false };
 
-		const callback: MutationCallback = () => {
+		const callback = () => {
 			setIcon(this.ribbonIcon, this.getIconName());
 			this.updateTheme();
 		};
 
 		this.appContainerObserver = new MutationObserver(callback);
 
-		this.appContainerObserver.observe(container, config);
+		document.querySelectorAll(".app-container, body").forEach((el) => {
+			this.appContainerObserver.observe(el, config);
+		});
 	}
 
 	async loadSettings() {
 		let storedSettings: ColorSchemeSettings = await this.loadData();
 
 		if (!storedSettings) {
-			// @ts-ignore
 			const currentTheme = this.app.customCss.theme || "Default";
 
 			storedSettings = {
