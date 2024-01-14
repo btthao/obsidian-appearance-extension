@@ -6,7 +6,6 @@ export default class ColorSchemePlugin extends Plugin {
 	settings: ColorSchemeSettings;
 	ribbonIcon: HTMLElement;
 	colorSchemes = <const>["moonstone", "obsidian", "system"];
-	appContainerObserver: MutationObserver;
 	app: App;
 
 	async onload() {
@@ -22,9 +21,7 @@ export default class ColorSchemePlugin extends Plugin {
 		this.addSettingTab(new SettingTab(this.app, this));
 	}
 
-	onunload() {
-		this.appContainerObserver.disconnect();
-	}
+	onunload() {}
 
 	setupRibbonMenuIcon() {
 		this.ribbonIcon = this.addRibbonIcon(
@@ -44,6 +41,7 @@ export default class ColorSchemePlugin extends Plugin {
 			];
 
 		this.app.changeTheme(newScheme);
+		this.updateTheme();
 
 		this.app.vault.setConfig("theme", newScheme);
 	}
@@ -82,18 +80,25 @@ export default class ColorSchemePlugin extends Plugin {
 		// when user changes color scheme => classlist of container changes
 		// observe this change to update ribbon icon when user changes color scheme in both settings modal and ribbon menu
 
-		const config = { attributes: true, childList: false, subtree: false };
-
 		const callback = () => {
 			setIcon(this.ribbonIcon, this.getIconName());
 			this.updateTheme();
 		};
 
-		this.appContainerObserver = new MutationObserver(callback);
+		new MutationObserver(callback).observe(
+			document.querySelector(".app-container") as Node,
+			{
+				attributes: true,
+				childList: false,
+				subtree: false,
+			}
+		);
 
-		document.querySelectorAll(".app-container, body").forEach((el) => {
-			this.appContainerObserver.observe(el, config);
-		});
+		window
+			.matchMedia("(prefers-color-scheme: dark)")
+			.addEventListener("change", () => {
+				callback();
+			});
 	}
 
 	async loadSettings() {
